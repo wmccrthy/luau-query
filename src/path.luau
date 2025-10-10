@@ -213,7 +213,7 @@ end
 -- unfortunate to require a second pass, but we call this at the start
 -- of query calls. walks tree and fills cache so we have Path object for each node
 -- and can access full tree context/navigation in query callbacks
--- TO-DO: can we refactor lute's visitor to include this metadata by default
+-- TO-DO: can we refactor visitor to pass this data down by default
 function createPathCache(cache: PathCache, node: any, parentPath: Path<any> | nil, id: string | number | nil)
 	if type(node) ~= "table" then
 		return
