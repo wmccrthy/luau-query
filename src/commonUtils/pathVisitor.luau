@@ -378,14 +378,16 @@ local function visitNumber(node: luau.AstExprConstantNumber, visitor: Visitor, p
 end
 
 local function visitLocalReference(node: luau.AstExprLocal, visitor: Visitor, parent, id, cache)
-	path.registerPath(node, parent, id, cache)
+	local nodePath = path.registerPath(node, parent, id, cache)
+	path.registerPath(node.token, nodePath, "token", cache)
 	if visitor.visitLocalReference(node) then
 		visitor.visitToken(node.token)
 	end
 end
 
 local function visitGlobal(node: luau.AstExprGlobal, visitor: Visitor, parent, id, cache)
-	path.registerPath(node, parent, id, cache)
+	local nodePath = path.registerPath(node, parent, id, cache)
+	path.registerPath(node.name, nodePath, "name", cache)
 	if visitor.visitGlobal(node) then
 		visitor.visitToken(node.name)
 	end
