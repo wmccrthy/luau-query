@@ -39,6 +39,7 @@ end
 -- has: broader, for checking a node's contents and relationships. not for specific node state/identity
 local has = {}
 
+-- generic helpers, usable on any path
 function has.ancestor<T>(condition: (Path<any>) -> boolean): (Path<T>) -> boolean
 	return function(nodePath)
 		return nodePath:findFirstAncestor(condition) ~= nil
@@ -53,6 +54,9 @@ end
 
 function has.id<T>(id: string | number): (Path<T>) -> boolean
 	return function(nodePath)
+		-- once we have parent support built into AST, we can do
+		-- return nodePath.node.parent[id] == nodePath.node
+
 		return nodePath.id == id
 	end
 end
@@ -79,19 +83,6 @@ function has.propertyDeep<T>(path: { string | number }, value: any?): (Path<T>) 
 	end
 end
 
-function has.argument(ind: number, condition: (Path<any>) -> boolean): (Path<luau.AstExprCall>) -> boolean
-	return function(nodePath)
-		if not has.tag("call")(nodePath) then
-			return false
-		end
-		local arg = nodePath:get(nodePath.node.arguments[ind])
-		if not arg then
-			return nil
-		end
-		return condition(arg)
-	end
-end
-
 function has.descendant<T>(condition: (Path<any>) -> boolean): (Path<T>) -> boolean
 	return function(nodePath)
 		return nodePath:findFirstDescendant(condition) ~= nil
@@ -102,6 +93,38 @@ end
 function has.token<T>(matcher: string): (Path<T>) -> boolean
 	return function(nodePath: Path<T>)
 		return nodePath:findFirstDescendant(all(has.property("text", matcher), has.property("position"))) ~= nil
+	end
+end
+
+-- more specific "has" helpers, only applicable on paths with certain node types
+
+function has.argument(
+	ind: number,
+	condition: (Path<any>) -> boolean
+): (Path<luau.AstExprCall>) -> boolean -- used on call nodes
+	return function(nodePath)
+		if not has.tag("call")(nodePath) then
+			return false
+		end
+		local arg = nodePath:get(nodePath.node.arguments[ind].node)
+		if not arg then
+			return nil
+		end
+		return condition(arg)
+	end
+end
+
+function has.name(name: string): (Path<luau.AstLocal | luau.AstExprGlobal>) -> boolean
+	return function(nodePath)
+		local isAstExprLocal = all(has.tag("local"), has.property("token"))(nodePath) -- local reference or declaration node
+		local isAstLocal = nodePath.node.name and nodePath.node.name.text
+		local isGlobal = has.tag("global")(nodePath)
+		if isAstExprLocal then
+			return nodePath.node.token.text == name
+		elseif isAstLocal or isGlobal then
+			return nodePath.node.name.text == name
+		end
+		return false
 	end
 end
 
