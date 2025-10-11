@@ -51,19 +51,6 @@ function Transformable:filter<T>(condition: (Path<T>) -> boolean): Transformable
 	return Transformable.new(filtered, self.metadataCache) -- use parent metadataCache to maintain widest scope
 end
 
--- Narrow a heterogeneous Transformable into a typed one.
--- Keeps order; drops non-matching values
-function Transformable:refine<T, V>(refiner: (Path<T>) -> Path<V>): Transformable<V>
-	local filtered = {}
-	for _, node in self.selected do
-		local refined = refiner(self.metadataCache[node])
-		if refined then
-			table.insert(filtered, refined.node)
-		end
-	end
-	return Transformable.new(filtered, self.metadataCache) -- use parent metadataCache to maintain widest scope
-end
-
 function Transformable:find<U, V>(
 	override: string,
 	condition: QueryCondition<U, V>
@@ -139,7 +126,6 @@ function query<T, V>(
 	local metadataCache = cache
 	if not metadataCache then
 		metadataCache = {}
-		-- createPathCache(metadataCache, src, nil, nil)
 	end
 
 	condition = condition or function(nodePath) -- fallback to default
@@ -164,11 +150,6 @@ function query<T, V>(
 	end
 
 	visitor.visitWithPaths(src, queryVisitor, nil, nil, metadataCache)
-	-- if ast.isExpression(src) then
-	-- 	visitor.visitExpression(src, queryVisitor)
-	-- elseif ast.isStatement(src) then
-	-- 	visitor.visitStatement(src, queryVisitor)
-	-- end -- we can add support for types eventually, but they're a rarer use case
 
 	return Transformable.new(selected, metadataCache)
 end
