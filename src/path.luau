@@ -70,6 +70,12 @@ end
 
 function Path:findFirstAncestor(condition: (Path<any>) -> boolean): Path<any> | nil
 	local ancestorPath = self.parentPath
+	-- once/if parent support is built into AST
+	-- local parent = self.node.parent
+	-- local parentPath = registerPath(parent, nil, nil, self._cache)
+	-- self.parentPath = parentPath
+	-- will do this lazily, as we traverse up (only create parent Path when we actually need it / read it)
+
 	-- print(ancestorPath)
 	while ancestorPath do
 		-- print(`Checking ancestor path: {ancestorPath.id}`)
