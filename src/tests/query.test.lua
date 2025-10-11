@@ -106,6 +106,25 @@ local function test_queryNoCondition()
 	assert(#calls.selected == 4, "Failed to query with default condition")
 end
 
+local function test_queryOnPath()
+	local src = [[
+		local x = 1
+		local y = 2
+	]]
+	local srcAST = parser.parse(src)
+	local cache = {}
+	path.createPathCache(cache, srcAST, nil, nil)
+	local rootPath = cache[srcAST]
+	query(rootPath, "LocalDeclaration", function(path)
+		query.byExpression(path.node, function(subPath)
+			assert(not subPath:findFirstAncestor(has.id("statements")))
+		end) -- if we query on node (without explicitly passing the cache, the query's cache is scoped within just the src node)
+		query.byExpression(path, function(subPath)
+			assert(subPath:findFirstAncestor(has.id("statements")))
+		end) -- if we query on path, the cache from this path is inherited (scope relative to the top-level query), so we should be able to find this ancestor
+	end)
+end
+
 local function test_transformableForEach()
 	local funcCalls = 0
 	local testCall = function()
@@ -307,6 +326,7 @@ function run()
 	test_queryOnStatement()
 	test_queryOnExpression()
 	test_queryNoCondition()
+	test_queryOnPath()
 
 	test_transformableForEach()
 	test_transformableReplace()

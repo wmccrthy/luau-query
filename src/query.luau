@@ -14,6 +14,8 @@ type TransformableData<T> = {
 
 type QueryCondition<T, V> = ((nodePath: Path<T>) -> V | nil) | nil
 
+type Queryable = Path<luau.AstExpr> | Path<luau.AstStat> | luau.AstExpr | luau.AstStat
+
 type Transformable<T> = typeof(setmetatable({} :: TransformableData<T>, Transformable))
 
 function Transformable.new<T>(selected: { T }, metadataCache: PathCache): Transformable<T>
@@ -114,18 +116,33 @@ function Transformable:size()
 	return #self.selected
 end
 
+function Transformable:nodes<T>(): { [T]: boolean }
+	local nodes = {}
+	for _, node in self.selected do
+		nodes[node] = true
+	end
+	return nodes
+end
+
+function Transformable:nodePaths<T>(): { [Path<T>]: boolean }
+	local paths = {}
+	for _, node in self.selected do
+		paths[self.metadataCache[node]] = true
+	end
+	return paths
+end
+
 -- Base Query; easily extendable and used to expose many basic/common query functions
-function query<T, V>(
-	src: luau.AstStat | luau.AstExpr,
-	override: string,
-	condition: QueryCondition<T, V>,
-	cache: PathCache?
-): Transformable<V>
+function query<T, V>(src: Queryable, override: string, condition: QueryCondition<T, V>, cache: PathCache?): Transformable<V>
 	local queryVisitor = visitor.createVisitor()
 	local selected = {}
 	local metadataCache = cache
 	if not metadataCache then
 		metadataCache = {}
+	end
+	if path.isPath(src) then
+		metadataCache = src._cache
+		src = src.node
 	end
 
 	condition = condition or function(nodePath) -- fallback to default
@@ -155,7 +172,7 @@ function query<T, V>(
 end
 
 function queryByExpression<T>(
-	src: luau.AstStat | luau.AstExpr,
+	src: Queryable,
 	condition: QueryCondition<luau.AstExpr, T>,
 	cache: PathCache?
 ): Transformable<T>
@@ -163,7 +180,7 @@ function queryByExpression<T>(
 end
 
 local function queryByStatement<T>(
-	src: luau.AstStat,
+	src: Queryable,
 	condition: QueryCondition<luau.AstStat, T>,
 	cache: PathCache?
 ): Transformable<T>
@@ -173,6 +190,10 @@ local function queryByStatement<T>(
 	if not metadataCache then
 		metadataCache = {}
 		-- createPathCache(metadataCache, src, nil, nil)
+	end
+	if path.isPath(src) then
+		metadataCache = src._cache
+		src = src.node
 	end
 
 	condition = condition or function(nodePath) -- fallback to default
@@ -198,14 +219,14 @@ local function queryByStatement<T>(
 		end
 	end
 
-	visitor.visitStatement(src, queryVisitor, nil, nil, metadataCache)
+	visitor.visitWithPaths(src, queryVisitor, nil, nil, metadataCache)
 
 	return Transformable.new(selected, metadataCache)
 end
 
 -- Some common queries that are not as generic as the above, but very common
 function queryByCallExpression<T>(
-	src: luau.AstStat | luau.AstExpr,
+	src: Queryable,
 	condition: QueryCondition<luau.AstExprCall, T>,
 	cache: PathCache?
 ): Transformable<T>
@@ -213,7 +234,7 @@ function queryByCallExpression<T>(
 end
 
 local function queryByCallStatement<T>(
-	src: luau.AstStat | luau.AstExpr,
+	src: Queryable,
 	condition: QueryCondition<luau.AstStat, T>,
 	cache: PathCache?
 ): Transformable<T>
@@ -234,7 +255,7 @@ local function queryByCallStatement<T>(
 end
 
 function queryByTableItem<T>(
-	src: luau.AstStat | luau.AstExpr,
+	src: Queryable,
 	condition: QueryCondition<luau.AstExprTableItem, T>,
 	cache: PathCache?
 ): Transformable<T>
@@ -242,7 +263,7 @@ function queryByTableItem<T>(
 end
 
 function queryByFunction<T>(
-	src: luau.AstStat | luau.AstExpr,
+	src: Queryable,
 	condition: QueryCondition<luau.AstStatFunction, T>,
 	cache: PathCache?
 ): Transformable<T>
