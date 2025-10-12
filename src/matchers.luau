@@ -116,15 +116,8 @@ end
 
 function has.name(name: string): (Path<luau.AstLocal | luau.AstExprGlobal>) -> boolean
 	return function(nodePath)
-		local isAstExprLocal = all(has.tag("local"), has.property("token"))(nodePath) -- local reference or declaration node
-		local isAstLocal = nodePath.node.name and nodePath.node.name.text
-		local isGlobal = has.tag("global")(nodePath)
-		if isAstExprLocal then
-			return nodePath.node.token.text == name
-		elseif isAstLocal or isGlobal then
-			return nodePath.node.name.text == name
-		end
-		return false
+		local pathName = nodePath:name()
+		return pathName and pathName == name
 	end
 end
 

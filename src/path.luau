@@ -216,6 +216,18 @@ function Path:print(depth: number?)
 	end
 end
 
+function Path:name(): string? -- only applicable to global/local declaration/reference nodes
+	local isAstExprLocal = self.node.tag and self.node.tag == "local" and self.node.token -- local reference or declaration node
+	local isAstLocal = self.node.name and self.node.name.text
+	local isGlobal = self.node.tag == "global"
+	if isAstExprLocal then
+		return self.node.token.text
+	elseif isAstLocal or isGlobal then
+		return self.node.name.text
+	end
+	return nil
+end
+
 -- unfortunate to require a second pass, but we call this at the start
 -- of query calls. walks tree and fills cache so we have Path object for each node
 -- and can access full tree context/navigation in query callbacks

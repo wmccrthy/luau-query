@@ -112,7 +112,7 @@ local function test_pathReplace()
 
 	-- newNode should exist in the cache
 	checkNodeExistsInCache(newNode, pathCache)
-	-- statements should be gone from the cache
+	-- statements (oldNode) should be gone from the cache
 	checkNodeExistsInCache(oldNode, pathCache, true)
 end
 
