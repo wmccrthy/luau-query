@@ -20,13 +20,13 @@ local src = [[
 -- lets remove all the print("remove") statements
 local ast = parser.parse(src)
 local printRemoveCalls = query.byCallStatement(ast, function(callPath)
-    if has.token("remove")(callPath) then
-        return callPath.node
-    end
-    return nil
+	if has.token("remove")(callPath) then
+		return callPath.node
+	end
+	return nil
 end)
 printRemoveCalls:forEach(function(path)
-    path:delete()
+	path:delete()
 end)
 
 print(common.getStatementText(ast))
