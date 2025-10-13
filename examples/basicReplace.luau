@@ -9,7 +9,7 @@ local src = [[
     assert(condition)
 ]]
 local ast = parser.parse(src)
--- lets replace the assert with an "if condition then error..." statement 
+-- lets replace the assert with an "if condition then error..." statement
 
 local assertCalls = query.byCallStatement(ast)
 assertCalls:forEach(function(path)
