@@ -60,7 +60,7 @@ function Path:getDescendantAt<T>(...: string | number): Path<T> | nil
 	for _, ind in path do
 		cur = cur[ind]
 		if not cur then
-			return
+			return nil
 		end
 		-- create paths as we traverse; (in case they are not already created, since visitor creates them in pre-order)
 		parent = registerPath(cur, parent, ind, self._cache)

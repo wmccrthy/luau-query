@@ -13,6 +13,14 @@ local src = [[
 ]]
 local srcAST = parser.parse(src)
 
+-- local function setup(s: string?)
+-- 	if not s then s = src end
+-- 	local srcAST = parser.parse(s)
+-- 	local pathCache = {}
+-- 	path.createPathCache(pathCache, srcAST, nil, nil)
+-- 	return pathCache[srcAST]
+-- end
+
 local function checkNodeExistsInCache(node, pathCache, invert: boolean?) -- pass invert to assert that node doesn't exist in cache
 	for k, v in node do
 		if typeof(v) == "table" then
@@ -202,11 +210,37 @@ local function test_pathGetDescendantAt()
 	local pathCache = {}
 	path.createPathCache(pathCache, srcAST, nil, nil)
 	local rootPath = pathCache[srcAST]
-	local statementsPath = pathCache[srcAST.statements]
-	assert(rootPath:getDescendantAt("statements") == statementsPath, "Failed to get statements path")
-	assert(rootPath:getDescendantAt("statements", 1), "Failed to find first statement")
-	assert(rootPath:getDescendantAt("statements", 1, "variables"), "Failed to find property of first statement")
+	local function tracePath(node, ...)
+		local indexPath = { ... }
+		local desc = rootPath:getDescendantAt(unpack(indexPath))
+		assert(desc, `Failed to find any descendant`)
+		assert(desc.node == node, `Failed to find correct descendant`)
+		for k, v in node do
+			if type(v) == "table" then
+				local newPath = { unpack(indexPath) }
+				table.insert(newPath, k)
+				tracePath(v, unpack(newPath))
+			end
+		end
+	end
+	tracePath(rootPath.node.statements, "statements")
 	assert(not rootPath:getDescendantAt("statements", 100), "False positive")
+	assert(not rootPath:getDescendantAt("statements", 1, "node"), "False positive")
+end
+
+local function test_pathName()
+	local pathCache = {}
+	path.createPathCache(pathCache, srcAST, nil, nil)
+	local rootPath = pathCache[srcAST]
+	local x, y, printCall =
+		rootPath:getDescendantAt("statements", 1, "variables", 1, "node"),
+		rootPath:getDescendantAt("statements", 2, "variables", 1, "node"),
+		rootPath:getDescendantAt("statements", 3, "expression", "func")
+	assert(x:name() == "x")
+	assert(y:name() == "y")
+	assert(printCall:name() == "print")
+	assert(not rootPath:name())
+	-- to-do... make test better
 end
 
 local function run()
@@ -219,6 +253,7 @@ local function run()
 	test_pathInsert()
 	test_pathDelete()
 	test_pathGetDescendantAt()
+	test_pathName()
 end
 
 return run
