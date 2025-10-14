@@ -13,17 +13,12 @@ local src = [[
 
 -- Lint for missing dependencies
 local ast = parser.parse(src)
-local useEffectCall = query.byCallExpression(ast, function(path)
-	if is.call("useEffect")(path) then
-		return path.node
-	end
-	return nil
-end)
+local useEffectCall = query.byCallExpression(ast):filter(is.call("useEffect"))
 
 useEffectCall:forEach(function(path)
 	-- find local references that are not in the dependency array; print warning
-	local callback = path.node.arguments[1].node
-	local deps = path.node.arguments[2].node
+	local callback = path:getDescendantAt("arguments", 1, "node")
+	local deps = path:getDescendantAt("arguments", 2, "node")
 	local referencedDeps = query(deps, "LocalReference"):nodes()
 	query(callback, "LocalReference", function(path)
 		if referencedDeps[path.node] == nil then
