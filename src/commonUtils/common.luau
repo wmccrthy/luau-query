@@ -91,7 +91,6 @@ function isStatement(node: any): boolean
 	return tagMappings.isStatement(node)
 end
 
--- we should just replace the above with this IMO
 function _matchesPathTable(node: any, pathParts: { string }): boolean
 	local currentNode = node
 	local numParts = #pathParts

@@ -6,14 +6,14 @@ type Path<T> = path.Path<T>
 -- Ideally simplifies the verbosity of writing manual callbacks and cover common cases
 
 function negate<T>(condition: (Path<T>) -> boolean): (Path<T>) -> boolean
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		return not condition(nodePath)
 	end
 end
 
 function any<T>(...: (Path<T>) -> boolean): (Path<T>) -> boolean
 	local predicates = { ... }
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		for _, predicate in predicates do
 			if predicate(nodePath) then
 				return true
@@ -26,7 +26,7 @@ end
 -- combining 'has' conditions in more concise way
 function all<T>(...: (Path<T>) -> boolean): (Path<T>) -> boolean
 	local predicates = { ... }
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		for ind, predicate in predicates do
 			if not predicate(nodePath) then
 				return false
@@ -41,19 +41,19 @@ local has = {}
 
 -- generic helpers, usable on any path
 function has.ancestor<T>(condition: (Path<any>) -> boolean): (Path<T>) -> boolean
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		return nodePath:findFirstAncestor(condition) ~= nil
 	end
 end
 
 function has.tag<T>(tag: string): (Path<T>) -> boolean
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		return nodePath.node.tag and nodePath.node.tag == tag
 	end
 end
 
 function has.id<T>(id: string | number): (Path<T>) -> boolean
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		-- once we have parent support built into AST, we can do
 		-- return nodePath.node.parent[id] == nodePath.node
 
@@ -62,7 +62,7 @@ function has.id<T>(id: string | number): (Path<T>) -> boolean
 end
 
 function has.property<T>(property: string, value: any?): (Path<T>) -> boolean
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		if nodePath.node[property] then
 			return value == nil or nodePath.node[property] == value
 		end
@@ -71,10 +71,10 @@ function has.property<T>(property: string, value: any?): (Path<T>) -> boolean
 end
 
 function has.propertyDeep<T>(path: { string | number }, value: any?): (Path<T>) -> boolean
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		local cur = nodePath.node
 		for _, ind in path do
-			cur = cur[ind]
+			cur = cur[ind] 
 			if not cur then
 				return false
 			end
@@ -108,7 +108,7 @@ function has.argument(
 		end
 		local arg = nodePath:get(nodePath.node.arguments[ind].node)
 		if not arg then
-			return nil
+			return false
 		end
 		return condition(arg)
 	end
@@ -117,7 +117,7 @@ end
 function has.name(name: string): (Path<luau.AstLocal | luau.AstExprGlobal>) -> boolean
 	return function(nodePath)
 		local pathName = nodePath:name()
-		return pathName and pathName == name
+		return if pathName then pathName == name else false
 	end
 end
 
@@ -135,7 +135,8 @@ local function getCommonFunctionName( -- gets name from most common function nam
 	return funcName
 end
 
-local function isFunctionGeneric(node, expectedTag, name: string?)
+type FunctionNode = luau.AstExprCall | luau.AstStatFunction | luau.AstStatLocalFunction
+local function isFunctionGeneric(node: FunctionNode, expectedTag, name: string?)
 	local isTag = node.tag == expectedTag
 	if not isTag then
 		return false
@@ -148,19 +149,19 @@ local function isFunctionGeneric(node, expectedTag, name: string?)
 end
 
 function is.call<T>(functionName: string?): (Path<T>) -> boolean
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		return isFunctionGeneric(nodePath.node, "call", functionName)
 	end
 end
 
 function is.globalFunction<T>(functionName: string?): (Path<T>) -> boolean
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		return isFunctionGeneric(nodePath.node, "function", functionName)
 	end
 end
 
 function is.localFunction<T>(functionName: string?): (Path<T>) -> boolean
-	return function(nodePath)
+	return function(nodePath: Path<T>)
 		return isFunctionGeneric(nodePath.node, "localfunction", functionName)
 	end
 end
@@ -171,23 +172,23 @@ end
 
 function is.localReference<T>(varName: string?): (Path<T>) -> boolean -- finds AstExprLocal nodes
 	return if varName
-		then all(has.tag("local"), has.property("token"), function(nodePath)
-			return nodePath.node.token.text == varName
+		then all(has.tag("local"), has.property("token"), function(nodePath: Path<T>)
+			return (nodePath :: any).node.token.text == varName
 		end)
 		else all(has.tag("local"), has.property("token"))
 end
 
 function is.globalReference<T>(varName: string?): (Path<T>) -> boolean
 	return if varName
-		then all(has.tag("global"), function(nodePath)
-			return nodePath.node.name.text == varName
+		then all(has.tag("global"), function(nodePath: Path<T>)
+			return (nodePath :: any).node.name.text == varName
 		end)
 		else has.tag("global")
 end
 
 function is.indexName<T>(parts: { string }): (Path<T>) -> boolean
-	return function(nodePath)
-		return nodePath.node.tag == "indexname" and ast._matchesPathTable(nodePath.node, parts)
+	return function(nodePath: Path<T>)
+		return has.tag("indexname")(nodePath) and ast._matchesPathTable(nodePath.node, parts)
 	end
 end
 
@@ -196,7 +197,7 @@ function is.nthChild<T>(n: number): (Path<T>) -> boolean
 		if not nodePath.parentPath then
 			error(`Calling is.nthChild on path with no parent.`)
 		end
-		return tonumber(nodePath.id) and nodePath.id == n
+		return if tonumber(nodePath.id) then nodePath.id == n else false
 	end
 end
 
