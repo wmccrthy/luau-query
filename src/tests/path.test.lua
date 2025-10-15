@@ -193,13 +193,10 @@ local function test_pathCacheNoLocalCollisions()
 	local rootPath = pathCache[srcAst]
 
 	local declarationStatement = rootPath:findFirstDescendant(all(is.localDeclaration(), has.token("x")))
-	assert(declarationStatement)
 	local declarationReference = pathCache[declarationStatement.node.variables[1].node]
 	local assertReference = rootPath:findFirstDescendant(is.call("assert")):findFirstDescendant(is.localReference())
 	local printReference = rootPath:findFirstDescendant(is.call("print")):findFirstDescendant(is.localReference())
 
-	assert(assertReference)
-	assert(printReference)
 	-- assert identity of declarationReference
 	assert(is.localDeclaration()(declarationStatement))
 	assert(all(negate(has.property("tag")), has.property("name"))(declarationReference))

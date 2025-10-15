@@ -2,9 +2,7 @@ local Path = {}
 Path.__index = Path
 
 export type PathData<T> = {
-	node: T & {
-		tag: string?,
-	}, -- stupid to have intersection, but type solver gets mad
+	node: T, -- stupid to have intersection, but type solver gets mad
 	parentPath: any?, -- in practice, this will be PathData<any>, but type solver gets mad
 	id: string? | number?,
 	_cache: any, -- store reference to full metadataCache for easy navigation (type is PathCache, but type solver gets mad)
@@ -86,9 +84,7 @@ function Path:findFirstAncestor(condition: (Path<any>) -> boolean): Path<any>
 	-- self.parentPath = parentPath
 	-- will do this lazily, as we traverse up (only create parent Path when we actually need it / read it)
 
-	-- print(ancestorPath)
 	while ancestorPath do
-		-- print(`Checking ancestor path: {ancestorPath.id}`)
 		if condition(ancestorPath) then
 			return ancestorPath
 		end

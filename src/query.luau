@@ -1,3 +1,4 @@
+local luau = require("@lute/luau")
 local visitor = require("./commonUtils/pathVisitor")
 local path = require("./path")
 
@@ -12,9 +13,11 @@ type TransformableData<T> = {
 	metadataCache: PathCache,
 }
 
-type QueryCondition<T, V> = ((nodePath: Path<T>) -> V | nil) | nil
+type QueryCondition<T, V> = ((nodePath: Path<T>) -> V | T | nil) | nil
 
-type Queryable = Path<luau.AstExpr> | Path<luau.AstStat> | luau.AstExpr | luau.AstStat
+type QueryablePath = Path<luau.AstExpr> | Path<luau.AstStat>
+
+type Queryable = QueryablePath | luau.AstExpr | luau.AstStat
 
 type Transformable<T> = typeof(setmetatable({} :: TransformableData<T>, Transformable))
 
@@ -27,8 +30,8 @@ function Transformable.new<T>(selected: { T }, metadataCache: PathCache): Transf
 end
 
 function Transformable:operate<T>(node: T, operation: (nodePath: Path<T>) -> ()) -- generic function used to consolidate handling of nil metadata cache entries
-	if self.metadataCache[node] then
-		operation(self.metadataCache[node])
+	if (self.metadataCache :: any)[node] then
+		operation((self.metadataCache :: any)[node])
 	end
 end
 
@@ -138,8 +141,8 @@ function query<T, V>(src: Queryable, override: string, condition: QueryCondition
 	local selected = {}
 	local metadataCache: PathCache = cache or {}
 	if path.isPath(src) then
-		metadataCache = src._cache
-		src = src.node
+		metadataCache = (src :: QueryablePath)._cache
+		src = (src :: QueryablePath).node
 	end
 
 	condition = condition or function(nodePath: Path<any>) -- fallback to default
@@ -185,8 +188,8 @@ local function queryByStatement<T>(
 	local queryVisitor = visitor.createVisitor()
 	local metadataCache = cache or {}
 	if path.isPath(src) then
-		metadataCache = src._cache
-		src = src.node
+		metadataCache = (src :: QueryablePath)._cache
+		src = (src :: QueryablePath).node
 	end
 
 	condition = condition or function(nodePath) -- fallback to default
@@ -235,12 +238,12 @@ local function queryByCallStatement<T>(
 		return nodePath.node
 	end
 
-	return queryByStatement(src, function(nodePath)
+	return queryByStatement(src, function(nodePath: Path<luau.AstStat>)
 		local node = nodePath.node
-		if node.tag ~= "expression" then
+		if node.tag :: string ~= "expression" then
 			return nil
 		end
-		if node.expression.tag ~= "call" then
+		if (node :: luau.AstStatExpr).expression.tag ~= "call" then
 			return nil
 		end
 		return (condition :: (Path<luau.AstStat>) -> T | nil)(nodePath)
