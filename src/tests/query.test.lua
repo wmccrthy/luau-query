@@ -117,10 +117,12 @@ local function test_queryOnPath()
 	local rootPath = cache[srcAST]
 	query(rootPath, "LocalDeclaration", function(path)
 		query.byExpression(path.node, function(subPath)
-			assert(not subPath:findFirstAncestor(has.id("statements")))
+			assert(subPath:findFirstAncestor(has.id("statements")).node == nil)
+			return subPath.node
 		end) -- if we query on node (without explicitly passing the cache, the query's cache is scoped within just the src node)
 		query.byExpression(path, function(subPath)
 			assert(subPath:findFirstAncestor(has.id("statements")))
+			return subPath.node
 		end) -- if we query on path, the cache from this path is inherited (scope relative to the top-level query), so we should be able to find this ancestor
 	end)
 end

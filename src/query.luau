@@ -60,7 +60,7 @@ function Transformable:find<U, V>(
 	local foundSet = {}
 	local returned = {}
 	for _, node in self.selected do -- these nodes are of type T
-		local res = query(node, override, condition, self.metadataCache) -- what we pass to condition is dependent on the override, thus why it is typed with U, not T
+		local res = query(node, override, condition, self.metadataCache :: PathCache) -- what we pass to condition is dependent on the override, thus why it is typed with U, not T
 		for _, innerNode in res.selected do
 			if not foundSet[innerNode] then
 				table.insert(returned, innerNode)
@@ -136,16 +136,13 @@ end
 function query<T, V>(src: Queryable, override: string, condition: QueryCondition<T, V>, cache: PathCache?): Transformable<V>
 	local queryVisitor = visitor.createVisitor()
 	local selected = {}
-	local metadataCache = cache
-	if not metadataCache then
-		metadataCache = {}
-	end
+	local metadataCache: PathCache = cache or {}
 	if path.isPath(src) then
 		metadataCache = src._cache
 		src = src.node
 	end
 
-	condition = condition or function(nodePath) -- fallback to default
+	condition = condition or function(nodePath: Path<any>) -- fallback to default
 		return nodePath.node
 	end
 
@@ -186,11 +183,7 @@ local function queryByStatement<T>(
 ): Transformable<T>
 	-- need to implement manually since there is no overwritable visitStatement
 	local queryVisitor = visitor.createVisitor()
-	local metadataCache = cache
-	if not metadataCache then
-		metadataCache = {}
-		-- createPathCache(metadataCache, src, nil, nil)
-	end
+	local metadataCache = cache or {}
 	if path.isPath(src) then
 		metadataCache = src._cache
 		src = src.node
