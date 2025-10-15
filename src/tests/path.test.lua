@@ -236,9 +236,9 @@ local function test_pathName()
 		rootPath:getDescendantAt("statements", 1, "variables", 1, "node"),
 		rootPath:getDescendantAt("statements", 2, "variables", 1, "node"),
 		rootPath:getDescendantAt("statements", 3, "expression", "func")
-	assert(x:name() == "x")
-	assert(y:name() == "y")
-	assert(printCall:name() == "print")
+	assert((x :: Path<any>):name() == "x")
+	assert((y :: Path<any>):name() == "y")
+	assert((printCall :: Path<any>):name() == "print")
 	assert(not rootPath:name())
 	-- to-do... make test better
 end
