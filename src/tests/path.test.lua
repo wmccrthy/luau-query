@@ -4,6 +4,13 @@ local matchers = require("../matchers")
 local has, is, all, negate = matchers.has, matchers.is, matchers.all, matchers.negate
 local ast = require("../commonUtils/common")
 
+local function expectToThrow(func)
+	local success, _ = pcall(function()
+		return func()
+	end)
+	assert(not success, "False positive")
+end
+
 type Path<T> = path.Path<T>
 
 local src = [[
@@ -54,7 +61,7 @@ local function test_pathFindFirstAncestor()
 	local rootPath = pathCache[srcAST]
 	assert(rootPath:findFirstAncestor(function(n)
 		return true
-	end) == nil, "Should find no ancestors for root node")
+	end).node == nil, "Should find no ancestors for root node")
 	local statementsPath = pathCache[srcAST.statements]
 	assert(
 		statementsPath:findFirstAncestor(has.tag("block")) == rootPath,
@@ -162,7 +169,7 @@ local function test_pathDelete()
 	assert(rootPath:findFirstDescendant(function(nodePath)
 		local isLocalX = nodePath.id == "variables" and nodePath.node[1].node.name.text == "x"
 		return isLocalX
-	end) == nil, "Found statement we wanted to delete")
+	end).node == nil, "Found statement we wanted to delete")
 	-- old node should be gone from the cache
 	checkNodeExistsInCache(firstStatement, pathCache, true)
 	-- existing children should have updated ids
@@ -186,10 +193,13 @@ local function test_pathCacheNoLocalCollisions()
 	local rootPath = pathCache[srcAst]
 
 	local declarationStatement = rootPath:findFirstDescendant(all(is.localDeclaration(), has.token("x")))
+	assert(declarationStatement)
 	local declarationReference = pathCache[declarationStatement.node.variables[1].node]
 	local assertReference = rootPath:findFirstDescendant(is.call("assert")):findFirstDescendant(is.localReference())
 	local printReference = rootPath:findFirstDescendant(is.call("print")):findFirstDescendant(is.localReference())
 
+	assert(assertReference)
+	assert(printReference)
 	-- assert identity of declarationReference
 	assert(is.localDeclaration()(declarationStatement))
 	assert(all(negate(has.property("tag")), has.property("name"))(declarationReference))
@@ -224,8 +234,12 @@ local function test_pathGetDescendantAt()
 		end
 	end
 	tracePath(rootPath.node.statements, "statements")
-	assert(not rootPath:getDescendantAt("statements", 100), "False positive")
-	assert(not rootPath:getDescendantAt("statements", 1, "node"), "False positive")
+	expectToThrow(function()
+		rootPath:getDescendantAt("statements", 100)
+	end)
+	expectToThrow(function()
+		rootPath:getDescendantAt("statements", 1, "node")
+	end)
 end
 
 local function test_pathName()

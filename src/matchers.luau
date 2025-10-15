@@ -42,13 +42,13 @@ local has = {}
 -- generic helpers, usable on any path
 function has.ancestor<T>(condition: (Path<any>) -> boolean): (Path<T>) -> boolean
 	return function(nodePath: Path<T>)
-		return nodePath:findFirstAncestor(condition) ~= nil
+		return nodePath:findFirstAncestor(condition).node ~= nil
 	end
 end
 
 function has.tag<T>(tag: string): (Path<T>) -> boolean
 	return function(nodePath: Path<T>)
-		return nodePath.node.tag and nodePath.node.tag == tag
+		return (nodePath.node.tag and nodePath.node.tag == tag) :: boolean
 	end
 end
 
@@ -74,7 +74,7 @@ function has.propertyDeep<T>(path: { string | number }, value: any?): (Path<T>) 
 	return function(nodePath: Path<T>)
 		local cur = nodePath.node
 		for _, ind in path do
-			cur = cur[ind] 
+			cur = cur[ind]
 			if not cur then
 				return false
 			end
@@ -85,7 +85,7 @@ end
 
 function has.descendant<T>(condition: (Path<any>) -> boolean): (Path<T>) -> boolean
 	return function(nodePath)
-		return nodePath:findFirstDescendant(condition) ~= nil
+		return nodePath:findFirstDescendant(condition).node ~= nil
 	end
 end
 

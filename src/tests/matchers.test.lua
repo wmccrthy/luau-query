@@ -41,7 +41,7 @@ function test_isGlobalFunction()
         end
     ]]
 	local rootPath = setup(src)
-	local functionPath = rootPath:get(rootPath.node.statements[1])
+	local functionPath = rootPath:getDescendantAt("statements", 1)
 	assert(is.globalFunction("myGlobalFunc")(functionPath), "Failed to detect global function")
 	assert(
 		not is.globalFunction("notMyGlobalFunc")(functionPath),
@@ -56,7 +56,7 @@ function test_isLocalFunction()
         end
     ]]
 	local rootPath = setup(src)
-	local functionPath = rootPath:get(rootPath.node.statements[1])
+	local functionPath = rootPath:getDescendantAt("statements", 1)
 	assert(is.localFunction("myLocalFunc")(functionPath), "Failed to detect local function")
 	assert(
 		not is.localFunction("notMyLocalFunc")(functionPath),
@@ -67,7 +67,7 @@ end
 function test_isLocalDeclaration()
 	local src = "local myLocal = 1"
 	local rootPath = setup(src)
-	local declarationPath = rootPath:get(rootPath.node.statements[1])
+	local declarationPath = rootPath:getDescendantAt("statements", 1)
 	assert(is.localDeclaration()(declarationPath), "Failed to detect local declaration")
 end
 
@@ -77,7 +77,7 @@ function test_isLocalReference()
         print(myLocal)
     ]]
 	local rootPath = setup(src)
-	local referencePath = rootPath:get(rootPath.node.statements[2].expression.arguments[1].node)
+	local referencePath = rootPath:getDescendantAt("statements", 2, "expression", "arguments", 1, "node")
 	assert(is.localReference("myLocal")(referencePath), "Failed to detect local reference")
 	assert(not is.localReference("notMyLocal")(referencePath), "Incorrectly evaluated faulty local reference as truthy")
 end
@@ -85,7 +85,7 @@ end
 function test_isGlobalReference()
 	local src = "local p = print"
 	local rootPath = setup(src)
-	local referencePath = rootPath:get(rootPath.node.statements[1].values[1].node)
+	local referencePath = rootPath:getDescendantAt("statements", 1, "values", 1, "node")
 	assert(is.globalReference("print")(referencePath), "Failed to detect global reference")
 	assert(not is.globalReference("notPrint")(referencePath), "Incorrectly evaluated faulty global reference as truthy")
 end
@@ -101,8 +101,8 @@ function test_isIndexName()
         print(t.a.b)
     ]]
 	local rootPath = setup(src)
-	local firstIndexNamePath = rootPath:get(rootPath.node.statements[2].expression.arguments[1].node)
-	local secondIndexNamePath = rootPath:get(rootPath.node.statements[3].expression.arguments[1].node)
+	local firstIndexNamePath = rootPath:getDescendantAt("statements", 2, "expression", "arguments", 1, "node")
+	local secondIndexNamePath = rootPath:getDescendantAt("statements", 3, "expression", "arguments", 1, "node")
 	assert(is.indexName({ "t", "a" })(firstIndexNamePath), "Failed to detect indexname")
 	assert(is.indexName({ "t", "a", "b" })(secondIndexNamePath), "Failed to detect indexname")
 end
@@ -114,9 +114,9 @@ function test_isNthChild()
         local z = 3
     ]]
 	local rootPath = setup(src)
-	local firstChildPath = rootPath:get(rootPath.node.statements[1])
-	local secondChildPath = rootPath:get(rootPath.node.statements[2])
-	local thirdChildPath = rootPath:get(rootPath.node.statements[3])
+	local firstChildPath = rootPath:getDescendantAt("statements", 1)
+	local secondChildPath = rootPath:getDescendantAt("statements", 2)
+	local thirdChildPath = rootPath:getDescendantAt("statements", 3)
 	assert(is.nthChild(1)(firstChildPath), "Incorrectly evaluated first child")
 	assert(is.nthChild(2)(secondChildPath), "Incorrectly evaluated second child")
 	assert(is.nthChild(3)(thirdChildPath), "Incorrectly evaluated third child")
@@ -132,13 +132,13 @@ function test_hasArgument()
 		return true
 	end
 	local rootPath = setup(src)
-	local invalidPath = rootPath:get(rootPath.node.statements[1])
-	local printSinglePath = rootPath:get(rootPath.node.statements[2]):getDescendantAt("expression")
-	local printMultiplePath = rootPath:get(rootPath.node.statements[3]):getDescendantAt("expression")
+	local invalidPath = rootPath:getDescendantAt("statements", 1)
+	local printSinglePath = rootPath:getDescendantAt("statements", 2, "expression")
+	local printMultiplePath = rootPath:getDescendantAt("statements", 3, "expression")
 	assert(not has.argument(1, alwaysTrue)(invalidPath), "Returned true for invalid node")
 	assert(has.argument(1, alwaysTrue)(printSinglePath), "Failed to detect argument 1 in: print(x)")
 	assert(
-		matchers.all(has.argument(1, alwaysTrue)(printMultiplePath), has.argument(2, alwaysTrue)(printMultiplePath)),
+		matchers.all(has.argument(1, alwaysTrue), has.argument(2, alwaysTrue))(printMultiplePath),
 		"Failed to detect arguments in: print(1, 2)"
 	)
 end

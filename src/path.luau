@@ -2,7 +2,9 @@ local Path = {}
 Path.__index = Path
 
 export type PathData<T> = {
-	node: T,
+	node: T & {
+		tag: string?,
+	}, -- stupid to have intersection, but type solver gets mad
 	parentPath: any?, -- in practice, this will be PathData<any>, but type solver gets mad
 	id: string? | number?,
 	_cache: any, -- store reference to full metadataCache for easy navigation (type is PathCache, but type solver gets mad)
@@ -54,21 +56,29 @@ function Path:get<T>(node: T): Path<T>?
 	return self._cache[node]
 end
 
-function Path:getDescendantAt<T>(...: string | number): Path<T> | nil
+function nullPath(): Path<nil>
+	return Path.new(nil, nil, nil, {})
+end
+
+function Path:getDescendantAt<T>(...: string | number): Path<T>
 	local cur, parent = self.node, self
 	local path = { ... }
 	for _, ind in path do
 		cur = cur[ind]
 		if not cur then
-			return nil
+			error("Invalid path given to getDescendantAt")
 		end
 		-- create paths as we traverse; (in case they are not already created, since visitor creates them in pre-order)
 		parent = registerPath(cur, parent, ind, self._cache)
 	end
-	return self:get(cur)
+	local descendant = self._cache[cur]
+	if not descendant then
+		error("Invalid path given to getDescendantAt")
+	end
+	return descendant
 end
 
-function Path:findFirstAncestor(condition: (Path<any>) -> boolean): Path<any> | nil
+function Path:findFirstAncestor(condition: (Path<any>) -> boolean): Path<any>
 	local ancestorPath = self.parentPath
 	-- once/if parent support is built into AST
 	-- local parent = self.node.parent
@@ -84,10 +94,10 @@ function Path:findFirstAncestor(condition: (Path<any>) -> boolean): Path<any> | 
 		end
 		ancestorPath = ancestorPath.parentPath
 	end
-	return nil
+	return nullPath()
 end
 
-function Path:findFirstDescendant(condition: (Path<any>) -> boolean): Path<any> | nil
+function Path:findFirstDescendant(condition: (Path<any>) -> boolean): Path<any>
 	local q, len = {}, 0
 	for k, v in self.node do
 		len += safeInsert(q, k, v, self._cache, self)
@@ -111,7 +121,7 @@ function Path:findFirstDescendant(condition: (Path<any>) -> boolean): Path<any> 
 		end
 		q = newQ
 	end
-	return nil
+	return nullPath()
 end
 
 function Path:findDescendants(condition: (Path<any>) -> boolean): { Path<any> }
@@ -258,7 +268,7 @@ function registerPath(node, parentPath, id, cache)
 end
 
 -- used to protect against queries returning a path
-local function isPath(node)
+local function isPath(node: any)
 	return node.node and node._cache
 end
 
