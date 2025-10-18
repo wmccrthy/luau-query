@@ -1,6 +1,7 @@
 -- test is and has methods
 local matchers = require("../matchers")
 local is, has = matchers.is, matchers.has
+local all, negate, any = matchers.all, matchers.negate, matchers.any
 local parser = require("@std/syntax/parser")
 local path = require("../path")
 
@@ -12,6 +13,33 @@ local function setup(src: string): path.Path<any>
 	path.createPathCache(pathCache, srcAST, nil, nil)
 	local rootPath = pathCache[srcAST]
 	return rootPath
+end
+
+local function alwaysTrue()
+	return true
+end
+local function alwaysFalse()
+	return false
+end
+
+function test_all()
+	local dummyPath = setup("local x = 1")
+	assert(all(alwaysTrue, alwaysTrue)(dummyPath), "Failed to detect all true")
+	assert(not all(alwaysTrue, alwaysFalse)(dummyPath), "Failed to detect all false")
+	assert(not all(alwaysFalse, alwaysTrue)(dummyPath), "Failed to detect all false")
+end
+
+function test_negate()
+	local dummyPath = setup("local x = 1")
+	assert(not negate(alwaysTrue)(dummyPath), "Failed to negated true as false")
+	assert(negate(alwaysFalse)(dummyPath), "Failed to negated false as true")
+end
+
+function test_any()
+	local dummyPath = setup("local x = 1")
+	assert(any(alwaysTrue, alwaysFalse)(dummyPath), "Failed to detect any true")
+	assert(any(alwaysFalse, alwaysTrue)(dummyPath), "Failed to detect any true")
+	assert(not any(alwaysFalse, alwaysFalse)(dummyPath), "Failed to detect any false")
 end
 
 function test_hasToken()
@@ -162,6 +190,22 @@ local function test_hasPropertyDeep()
 	)
 end
 
+local function test_hasDescendantAt()
+	local rootPath = setup("local x = 1")
+	assert(has.descendantAt({ "statements", 1 })(rootPath), "Failed to find descendant at statements 1")
+	assert(not has.descendantAt({ "statements", 2 })(rootPath), "False positive")
+	assert(
+		has.descendantAt({ "statements", 1, "variables", 1 })(rootPath),
+		"Failed to find descendant at statements 1, variables 1"
+	)
+	assert(not has.descendantAt({ "statements", 1, "variables", 2 })(rootPath), "False positive")
+	assert(
+		has.descendantAt({ "statements", 1, "variables", 1, "node" })(rootPath),
+		"Failed to find descendant at statements 1, variables 1, node"
+	)
+	assert(not has.descendantAt({ "statements", 1, "variables", 2 })(rootPath), "False positive")
+end
+
 function run()
 	test_hasToken()
 	test_isCall()
@@ -174,6 +218,10 @@ function run()
 	test_isNthChild()
 	test_hasArgument()
 	test_hasPropertyDeep()
+	test_hasDescendantAt()
+	test_all()
+	test_negate()
+	test_any()
 end
 
 return run
