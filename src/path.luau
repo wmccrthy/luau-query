@@ -223,7 +223,7 @@ function Path:print(depth: number?)
 end
 
 function Path:name(): string? -- only applicable to global/local declaration/reference nodes
-	local isAstExprLocal = self.node.tag and self.node.tag == "local" and self.node.token -- local reference or declaration node
+	local isAstExprLocal = self.node.tag and self.node.tag == "local" and self.node.token -- local reference
 	local isAstLocal = self.node.name and self.node.name.text
 	local isGlobal = self.node.tag == "global"
 	if isAstExprLocal then
