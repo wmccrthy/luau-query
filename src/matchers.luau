@@ -101,8 +101,10 @@ end
 
 function has.descendantAt<T>(path: { string | number }, predicate: ((Path<any>) -> boolean)?): (Path<T>) -> boolean
 	return function(nodePath)
-		local desc = nodePath:getDescendantAt(table.unpack(path))
-		if not desc.node then
+		local success, desc = pcall(function()
+			return nodePath:getDescendantAt(table.unpack(path))
+		end)
+		if not success then
 			return false
 		end
 		return if predicate then predicate(desc) else true
