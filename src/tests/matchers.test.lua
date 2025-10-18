@@ -156,6 +156,10 @@ local function test_hasPropertyDeep()
 		"Failed to find text of first variable"
 	)
 	assert(not has.propertyDeep({ "statements", 2 })(rootPath), "False positive")
+	assert(
+		not has.propertyDeep({ "statements", 1, "variables", 1, "node", "name", "text" }, "y")(rootPath),
+		"False positive"
+	)
 end
 
 function run()

@@ -1,3 +1,4 @@
+local luau = require("@lute/luau")
 local ast = require("./commonUtils/common")
 local path = require("./path")
 type Path<T> = path.Path<T>
@@ -61,10 +62,19 @@ function has.id<T>(id: string | number): (Path<T>) -> boolean
 	end
 end
 
+function has.parent<T, V>(predicate: (Path<V>) -> boolean): (Path<T>) -> boolean
+	return function(nodePath: Path<T>)
+		if nodePath.parentPath then
+			return predicate(nodePath.parentPath :: Path<V>)
+		end
+		return false
+	end
+end
+
 function has.property<T>(property: string, value: any?): (Path<T>) -> boolean
 	return function(nodePath: Path<T>)
-		if nodePath.node[property] then
-			return value == nil or nodePath.node[property] == value
+		if (nodePath.node :: any)[property] then
+			return value == nil or (nodePath.node :: any)[property] == value
 		end
 		return false
 	end
@@ -79,7 +89,7 @@ function has.propertyDeep<T>(path: { string | number }, value: any?): (Path<T>) 
 				return false
 			end
 		end
-		return cur ~= nil
+		return if value then cur == value else cur ~= nil
 	end
 end
 
@@ -89,10 +99,20 @@ function has.descendant<T>(condition: (Path<any>) -> boolean): (Path<T>) -> bool
 	end
 end
 
+function has.descendantAt<T>(path: { string | number }, predicate: ((Path<any>) -> boolean)?): (Path<T>) -> boolean
+	return function(nodePath)
+		local desc = nodePath:getDescendantAt(table.unpack(path))
+		if not desc.node then
+			return false
+		end
+		return if predicate then predicate(desc) else true
+	end
+end
+
 -- similar applications to text matching, but a little more precise;
 function has.token<T>(matcher: string): (Path<T>) -> boolean
 	return function(nodePath: Path<T>)
-		return nodePath:findFirstDescendant(all(has.property("text", matcher), has.property("position"))) ~= nil
+		return nodePath:findFirstDescendant(all(has.property("text", matcher), has.property("position"))).node ~= nil
 	end
 end
 
@@ -106,8 +126,8 @@ function has.argument(
 		if not has.tag("call")(nodePath) then
 			return false
 		end
-		local arg = nodePath:get(nodePath.node.arguments[ind].node)
-		if not arg then
+		local arg = nodePath:getDescendantAt("arguments", ind, "node")
+		if not arg.node then
 			return false
 		end
 		return condition(arg)
@@ -135,8 +155,7 @@ local function getCommonFunctionName( -- gets name from most common function nam
 	return funcName
 end
 
-type FunctionNode = luau.AstExprCall | luau.AstStatFunction | luau.AstStatLocalFunction
-local function isFunctionGeneric(node: FunctionNode, expectedTag, name: string?)
+local function isFunctionGeneric<T>(node: T, expectedTag: string, name: string?)
 	local isTag = node.tag == expectedTag
 	if not isTag then
 		return false
@@ -181,7 +200,7 @@ end
 function is.globalReference<T>(varName: string?): (Path<T>) -> boolean
 	return if varName
 		then all(has.tag("global"), function(nodePath: Path<T>)
-			return (nodePath :: any).node.name.text == varName
+			return nodePath.node.name.text == varName
 		end)
 		else has.tag("global")
 end
